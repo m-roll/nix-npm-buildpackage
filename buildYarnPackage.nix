@@ -43,9 +43,8 @@ let
 
   yarnCmd = "${yarnWrapper}/bin/yarn";
 in args@{ src, yarnBuild ? "yarn", yarnBuildMore ? "", integreties ? { }
-        , packageOverrides ? [ ], buildInputs ? [ ], yarnFlags ? [ ],
-          subdir ? null
-, ... }:
+, packageOverrides ? [ ], buildInputs ? [ ], yarnFlags ? [ ], subdir ? null, ...
+}:
 let
   deps = { dependencies = builtins.fromJSON (builtins.readFile yarnJson); };
   yarnIntFile = writeText "integreties.json" (builtins.toJSON integreties);
@@ -55,7 +54,9 @@ let
     tar -C $_ --strip-components=1 -xf ${yarnpkg-lockfile}
     addToSearchPath NODE_PATH $PWD/node_modules         # @yarnpkg/lockfile
     addToSearchPath NODE_PATH ${npmModules}             # ssri
-    ${nodejs}/bin/node ${./mkyarnjson.js} ${src + "/yarn.lock"} ${yarnIntFile} > $out
+    ${nodejs}/bin/node ${./mkyarnjson.js} ${
+      src + "/yarn.lock"
+    } ${yarnIntFile} > $out
   '';
   pkgDir = if subdir != null then src + "/" + subdir else src;
 in stdenv.mkDerivation (rec {
@@ -69,7 +70,7 @@ in stdenv.mkDerivation (rec {
   yarnConfigPhase = ''
     # this line removes a bug where value of $HOME is set to a non-writable /homeless-shelter dir
     export HOME=$(pwd)
-    
+
     cat <<-END >> .yarnrc
     	yarn-offline-mirror "$PWD/yarn-cache"
     	nodedir "${nodejs}"
@@ -78,7 +79,9 @@ in stdenv.mkDerivation (rec {
 
   yarnCachePhase = ''
     mkdir -p yarn-cache
-    node ${./mkyarncache.js} ${yarnCacheInput "yarn-cache-input.json" deps packageOverrides}
+    node ${./mkyarncache.js} ${
+      yarnCacheInput "yarn-cache-input.json" deps packageOverrides
+    }
   '';
 
   buildPhase = ''
@@ -95,6 +98,7 @@ in stdenv.mkDerivation (rec {
 
   # TODO: install --production?
   yarnPackPhase = ''
+    ${if subdir != null then "cd ${subdir}" else ""}
     yarn pack --ignore-scripts --filename "${outFile}.tgz"
   '';
 
@@ -105,5 +109,6 @@ in stdenv.mkDerivation (rec {
   '';
 } // commonEnv // removeAttrs args [ "integreties" "packageOverrides" ] // {
   buildInputs = [ nodejs makeWrapper yarnWrapper ] ++ buildInputs;
-  yarnFlags = [ "--offline" "--frozen-lockfile" "--non-interactive" ] ++ yarnFlags;
+  yarnFlags = [ "--offline" "--frozen-lockfile" "--non-interactive" ]
+    ++ yarnFlags;
 })
