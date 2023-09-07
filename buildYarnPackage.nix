@@ -98,10 +98,6 @@ in stdenv.mkDerivation (rec {
 
   # TODO: install --production?
   yarnPackPhase = ''
-    ${if subdir != null then "cd ${subdir}" else ""}
-    echo "subdir is"
-    echo ${subdir}
-    echo "si subdir"
     yarn pack --ignore-scripts --filename "${outFile}.tgz"
   '';
 
